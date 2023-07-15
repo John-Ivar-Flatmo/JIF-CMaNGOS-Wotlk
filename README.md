@@ -3,6 +3,20 @@
 
 This file is part of the CMaNGOS Project. See [AUTHORS](AUTHORS.md) and [COPYRIGHT](COPYRIGHT.md) files for Copyright information
 
+
+the changes to this version of cmangos are for a non public server, its tailored to the peaple who play it and you may not care for some of the changes, the repo was made public so that other may benefit, be it straight up copying or refrence material
+
+## some of the changes from cmangos
+* removal of player kick ##including for cheating so not reccomended
+* allow trading bound items
+* bound items in AuctionHouse
+* scale xp based on player level, xp+( 5* (XP/maxLevel)*level ) (x1.08 at lvl 1) (2x at lvl 12) 6x at lvl 60 
+* playerbot improvemnts
+	* bots use spells more reactivly, eg they check for debuffs and buffs when selecting spells
+	* bots use aoe abilities, including warlock hellfire
+	* bots look at existing positive effect when selecting spells, eg different shaman totems
+	* tanks actualy change targets when good on agro
+	* bots stop moving to drink/eat
 ## Welcome to C(ontinued)-MaNGOS
 
 CMaNGOS is a free project with the following goal:
@@ -54,7 +68,7 @@ To be able to accomplish these goals, we support and promote:
   * [CMaNGOS Discord](https://discord.gg/Dgzerzb)
   * [GitHub repositories](https://github.com/cmangos/)
   * [Issue tracker](https://github.com/cmangos/issues/issues)
-  * [Pull Requests](https://github.com/cmangos/mangos-wotlk/pulls)
+  * [Pull Requests](https://github.com/cmangos/mangos-classic/pulls)
   * [Wiki](https://github.com/cmangos/issues/wiki) with additional information on installation
   * [Contributing Guidelines](CONTRIBUTING.md)
   * Documentation can be found in the doc/ subdirectory and on the GitHub wiki
