@@ -465,7 +465,7 @@ bool Item::LoadFromDB(uint32 guidLow, Field* fields, ObjectGuid ownerGuid)
     }
 
     // Remove bind flag for items vs NO_BIND set
-    if (IsSoulBound() && proto->Bonding == NO_BIND)
+    if (IsSoulBound()) //unbind eregardless of nobind
     {
         ApplyModFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_BINDED, false);
         need_save = true;
@@ -847,45 +847,15 @@ bool Item::IsEquipped() const
 
 bool Item::CanBeTraded(bool mail) const
 {
-    if ((!mail || !IsBoundAccountWide()) && IsSoulBound())
-        return false;
-
     if (IsBag() && (Player::IsBagPos(GetPos()) || !((Bag const*)this)->IsEmpty()))
-        return false;
-
-    if (Player* owner = GetOwner())
-    {
-        if (owner->CanUnequipItem(GetPos(), false) !=  EQUIP_ERR_OK)
-            return false;
-        if (owner->GetLootGuid() == GetObjectGuid())
-            return false;
-    }
-
-    if (HasGeneratedLoot())
-        return false;
-
-    if (IsBoundByEnchant())
-        return false;
+        return false; //only cant be traded if not in inventory
 
     return true;
 }
 
 bool Item::IsBoundByEnchant() const
 {
-    // Check all enchants for soulbound
-    for (uint32 enchant_slot = PERM_ENCHANTMENT_SLOT; enchant_slot < MAX_ENCHANTMENT_SLOT; ++enchant_slot)
-    {
-        uint32 enchant_id = GetEnchantmentId(EnchantmentSlot(enchant_slot));
-        if (!enchant_id)
-            continue;
-
-        SpellItemEnchantmentEntry const* enchantEntry = sSpellItemEnchantmentStore.LookupEntry(enchant_id);
-        if (!enchantEntry)
-            continue;
-
-        if (enchantEntry->flags & ENCHANTMENT_SOULBOUND)
-            return true;
-    }
+	//never bound by enchant
     return false;
 }
 
@@ -1172,17 +1142,7 @@ Item* Item::CloneItem(uint32 count, Player const* player) const
 
 bool Item::IsBindedNotWith(Player const* player) const
 {
-    // own item
-    if (GetOwnerGuid() == player->GetObjectGuid())
-        return false;
-
-    // has loot with diff owner
-    if (HasGeneratedLoot())
-        return true;
-
-    // not binded item
-    if (!IsSoulBound())
-        return false;
+//so different from tbc and classic, shuld work simmelarly just dont know about account wide and that online offline crap
 
     // not BOA item case
     if (!IsBoundAccountWide())

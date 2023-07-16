@@ -787,30 +787,7 @@ void WorldSession::LogoutPlayer()
 /// Kick a player out of the World
 void WorldSession::KickPlayer(bool save, bool inPlace)
 {
-    m_playerSave = save;
-    if (inPlace)
-    {
-        m_kickSession = true;
-        LogoutPlayer();
-        return;
-    }
-
-#ifdef BUILD_PLAYERBOT
-    if (!_player)
-        return;
-
-    if (_player->GetPlayerbotAI())
-    {
-        auto master = _player->GetPlayerbotAI()->GetMaster();
-        auto botMgr = master->GetPlayerbotMgr();
-        if (botMgr)
-            botMgr->LogoutPlayerBot(_player->GetObjectGuid());
-    }
-    else
-        LogoutRequest(time(nullptr) - 20, false);
-#else
-    LogoutRequest(time(nullptr) - 20, false, true);
-#endif
+//no kicking player for any reason cheat afk or otherwise
 }
 
 void WorldSession::SendExpectedSpamRecords()

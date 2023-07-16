@@ -2863,11 +2863,13 @@ void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
     else
         bonus_xp = victim ? GetXPRestBonus(xp) : 0;
 
-    SendLogXPGain(xp, victim, bonus_xp, recruitAFriend, groupRate);
-
     uint32 curXP = GetUInt32Value(PLAYER_XP);
     uint32 nextLvlXP = GetUInt32Value(PLAYER_NEXT_LEVEL_XP);
-    uint32 newXP = curXP + xp + bonus_xp;
+    uint32 extraLevelXp = static_cast<uint32>(5*((xp/sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)*level)));
+    //JIFEDIT: extra xp at higher level to account for each player leveling like 10 chars
+    uint32 newXP = curXP + xp + bonus_xp + extraLevelXp;
+    SendLogXPGain((xp+extraLevelXp), victim, GetXPRestBonus(xp),GetsRecruitAFriendBonus(), groupRate);
+
 
     while (newXP >= nextLvlXP && level < GetMaxAttainableLevel())
     {
@@ -10106,12 +10108,12 @@ InventoryResult Player::_CanStoreItem(uint8 bag, uint8 slot, ItemPosCountVec& de
             return EQUIP_ERR_ALREADY_LOOTED;
         }
 
-        if (pItem->IsBindedNotWith(this))
-        {
-            if (no_space_count)
-                *no_space_count = count;
-            return EQUIP_ERR_DONT_OWN_THAT_ITEM;
-        }
+        //if (pItem->IsBindedNotWith(this))
+        //{
+        //    if (no_space_count)
+        //        *no_space_count = count;
+        //    return EQUIP_ERR_DONT_OWN_THAT_ITEM;
+        //}
     }
 
     // check count of items (skip for auto move for same player from bank)
@@ -10598,8 +10600,8 @@ InventoryResult Player::CanStoreItems(Item** pItems, int count, uint32* itemLimi
             return EQUIP_ERR_ALREADY_LOOTED;
 
         // item it 'bind'
-        if (pItem->IsBindedNotWith(this))
-            return EQUIP_ERR_DONT_OWN_THAT_ITEM;
+        //if (pItem->IsBindedNotWith(this))
+        //    return EQUIP_ERR_DONT_OWN_THAT_ITEM;
 
         Bag* pBag;
         ItemPrototype const* pBagProto;
@@ -10804,8 +10806,8 @@ InventoryResult Player::CanEquipItem(uint8 slot, uint16& dest, Item* pItem, bool
             if (pItem->HasTemporaryLoot())
                 return EQUIP_ERR_ALREADY_LOOTED;
 
-            if (pItem->IsBindedNotWith(this))
-                return EQUIP_ERR_DONT_OWN_THAT_ITEM;
+           //if (pItem->IsBindedNotWith(this))
+           //    return EQUIP_ERR_DONT_OWN_THAT_ITEM;
 
             // check count of items (skip for auto move for same player from bank)
             InventoryResult res = CanTakeMoreSimilarItems(pItem);
@@ -10995,8 +10997,8 @@ InventoryResult Player::CanBankItem(uint8 bag, uint8 slot, ItemPosCountVec& dest
     if (pItem->HasTemporaryLoot())
         return EQUIP_ERR_ALREADY_LOOTED;
 
-    if (pItem->IsBindedNotWith(this))
-        return EQUIP_ERR_DONT_OWN_THAT_ITEM;
+    //if (pItem->IsBindedNotWith(this))
+    //    return EQUIP_ERR_DONT_OWN_THAT_ITEM;
 
     // check count of items (skip for auto move for same player from bank)
     InventoryResult res = CanTakeMoreSimilarItems(pItem);
@@ -11176,8 +11178,8 @@ InventoryResult Player::CanUseItem(Item* pItem, bool direct_action) const
         ItemPrototype const* pProto = pItem->GetProto();
         if (pProto)
         {
-            if (pItem->IsBindedNotWith(this))
-                return EQUIP_ERR_DONT_OWN_THAT_ITEM;
+            //if (pItem->IsBindedNotWith(this))
+            //    return EQUIP_ERR_DONT_OWN_THAT_ITEM;
 
             InventoryResult msg = CanUseItem(pProto);
             if (msg != EQUIP_ERR_OK)
@@ -11401,11 +11403,11 @@ Item* Player::_StoreItem(uint16 pos, Item* pItem, uint32 count, bool clone, bool
         if (!pItem)
             return nullptr;
 
-        ItemPrototype const* itemProto = pItem->GetProto();
-        if (itemProto->Bonding == BIND_WHEN_PICKED_UP
-                || itemProto->Bonding == BIND_QUEST_ITEM
-                || (itemProto->Bonding == BIND_WHEN_EQUIPPED && IsBagPos(pos)))
-            pItem->SetBinding(true);
+        //ItemPrototype const* itemProto = pItem->GetProto();
+        //if (itemProto->Bonding == BIND_WHEN_PICKED_UP
+        //        || itemProto->Bonding == BIND_QUEST_ITEM
+        //        || (itemProto->Bonding == BIND_WHEN_EQUIPPED && IsBagPos(pos)))
+            pItem->SetBinding(false); //unbind instead of bind
 
         if (bag == INVENTORY_SLOT_BAG_0)
         {
@@ -11644,9 +11646,9 @@ void Player::VisualizeItem(uint8 slot, Item* pItem)
         return;
 
     // check also  BIND_WHEN_PICKED_UP and BIND_QUEST_ITEM for .additem or .additemset case by GM (not binded at adding to inventory)
-    ItemPrototype const* itemProto = pItem->GetProto();
-    if (itemProto->Bonding == BIND_WHEN_EQUIPPED || itemProto->Bonding == BIND_WHEN_PICKED_UP || itemProto->Bonding == BIND_QUEST_ITEM)
-        pItem->SetBinding(true);
+    //ItemPrototype const* itemProto = pItem->GetProto();
+    //if (itemProto->Bonding == BIND_WHEN_EQUIPPED || itemProto->Bonding == BIND_WHEN_PICKED_UP || itemProto->Bonding == BIND_QUEST_ITEM)
+        pItem->SetBinding(false); //unbind instead of bind
 
     DEBUG_LOG("STORAGE: EquipItem slot = %u, item = %u", slot, pItem->GetEntry());
 

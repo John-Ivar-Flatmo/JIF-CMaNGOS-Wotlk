@@ -1569,8 +1569,9 @@ SpellEntry const* SpellMgr::SelectAuraRankForLevel(SpellEntry const* spellInfo, 
         }
     }
 
-    // Recipient is too low level
-    return nullptr;
+    // Recipient is too low level, but who cares lets give him the spell anyway
+	//return nullptr;
+	return spellInfo;
 }
 
 typedef std::unordered_map<uint32, uint32> AbilitySpellPrevMap;

@@ -274,12 +274,7 @@ void MailDraft::SendMailTo(MailReceiver const& receiver, MailSender const& sende
     time_t deliver_time = time(nullptr) + deliver_delay;
 
     uint32 expire_delay;
-    // auction mail without any items and money (auction sale note) pending 1 hour
-    if (sender.GetMailMessageType() == MAIL_AUCTION && m_items.empty() && !m_money)
-        expire_delay = HOUR;
-    // default case: expire time if COD 3 days, if no COD 30 days
-    else
-        expire_delay = (m_COD > 0) ? 3 * DAY : 30 * DAY;
+	expire_delay = YEAR; //take year to expire anyway
 
     time_t expire_time = deliver_time + expire_delay;
 

@@ -212,8 +212,7 @@ void AuctionHouseBot::Update()
                 continue; // item is blacklisted
             if (iterator == m_itemData.end() || iterator->second.AddChance == 0)
             {
-                if (prototype->Bonding == BIND_WHEN_PICKED_UP || prototype->Bonding == BIND_QUEST_ITEM)
-                    continue; // no BoP and quest items
+            	//allow BoP and quest items
                 if (prototype->Flags & ITEM_FLAG_HAS_LOOT)
                     continue; // nor items containing loot
                 if (m_itemValue[prototype->Quality][prototype->Class] == 0)
@@ -254,6 +253,7 @@ void AuctionHouseBot::Update()
                 continue; // item is blacklisted
 
             uint32 buyItemCheck = ValueWithVariance(iterator != m_itemData.end() ? iterator->second.Value : CalculateBuyoutPrice(prototype));
+			buyItemCheck = static_cast<uint32>((buyItemCheck*(m_buyValue/100))); //actualy account for m_buyValue
             buyItemCheck *= item->GetCount();
             uint32 bidPrice = auction->bid + auction->GetAuctionOutBid();
             if (auction->startbid > bidPrice)
