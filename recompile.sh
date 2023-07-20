@@ -10,7 +10,7 @@ rm -r ./built
 threads=1  ##single threaded to see code errors cleaner
 echo "threads: $threads"
 
-cmakeFlags=" -DCMAKE_INSTALL_PREFIX=./built -DBUILD_EXTRACTORS=OFF -DPCH=0 -DDEBUG=1 -DBUILD_PLAYERBOT=ON"
+cmakeFlags=" -DCMAKE_INSTALL_PREFIX=./built -DBUILD_EXTRACTORS=OFF -DPCH=1 -DDEBUG=1 -DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON"
 mkdir "$scriptDir/build"
 cd "$scriptDir/build"
 cmake "$scriptDir/" $cmakeFlags

@@ -17,7 +17,7 @@ if [ "$threads" -eq "0" ]; then
 fi
 echo "threads: $threads"
 
-cmakeFlags=" -DCMAKE_INSTALL_PREFIX=$scriptDir/built -DBUILD_EXTRACTORS=OFF -DPCH=0 -DDEBUG=1 -DBUILD_PLAYERBOT=ON"
+cmakeFlags=" -DCMAKE_INSTALL_PREFIX=$scriptDir/built -DBUILD_EXTRACTORS=OFF -DPCH=0 -DDEBUG=1 -DBUILD_PLAYERBOT=ON -DBUILD_AHBOT=ON"
 mkdir "$scriptDir/build"
 cd "$scriptDir/build"
 cmake "$scriptDir/" $cmakeFlags
