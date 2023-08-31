@@ -12745,9 +12745,9 @@ void Unit::NearTeleportTo(float x, float y, float z, float orientation, bool cas
             if (MovementGenerator* movgen = c->GetMotionMaster()->top())
                 movgen->Interrupt(*c);
 
-        GetMap()->CreatureRelocation(c, x, y, z, orientation);
+        SendTeleportPacket(x, y, z, orientation, GetTransport());
 
-        SendHeartBeat();
+        GetMap()->CreatureRelocation(c, x, y, z, orientation);
 
         // finished relocation, movegen can different from top before creature relocation,
         // but apply Reset expected to be safe in any case
@@ -13254,7 +13254,8 @@ void Unit::OnRelocated()
         m_last_notified_position.x = GetPositionX();
         m_last_notified_position.y = GetPositionY();
         m_last_notified_position.z = GetPositionZ();
-
+        if (!IsBoarded() && IsVehicle()) // must update passengers for visibility reasons
+            m_vehicleInfo->UpdateGlobalPositions();
         GetViewPoint().Call_UpdateVisibilityForOwner();
         UpdateObjectVisibility();
     }

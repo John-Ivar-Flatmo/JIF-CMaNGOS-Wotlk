@@ -598,9 +598,9 @@ bool GOUse_go_quest_still_at_it_credit(Player* pPlayer, GameObject* pGo)
 // 51330 - Shoot RJR
 struct ShootRJR : public SpellScript
 {
-    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const
+    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
     {
-        if (!spell->m_targets.getUnitTargetGuid().IsCreature() || spell->m_targets.getUnitTargetGuid().GetEntry() != 28054) // Lucky Wilhelm
+        if (!spell->m_targets.getUnitTargetGuid().IsCreatureOrVehicle() || spell->m_targets.getUnitTargetGuid().GetEntry() != 28054) // Lucky Wilhelm
             return SPELL_FAILED_BAD_TARGETS;
         return SPELL_CAST_OK;
     }
@@ -623,6 +623,66 @@ struct ShootRJR : public SpellScript
             caster->CastSpell(target, roll_chance_i(25) ? 51366 : 51332, TRIGGERED_OLD_TRIGGERED);
         else
             caster->CastSpell(target, 51331, TRIGGERED_OLD_TRIGGERED);
+    }
+};
+
+// 45472 - Parachute
+struct ParachutePeriodicDummy : public AuraScript
+{
+    void OnPeriodicDummy(Aura* aura) const override
+    {
+        if (aura->GetTarget()->IsFalling())
+        {
+            aura->GetTarget()->CastSpell(nullptr, aura->GetAmount(), TRIGGERED_OLD_TRIGGERED);
+            aura->GetTarget()->RemoveAurasDueToSpell(aura->GetId());
+        }
+    }
+};
+
+enum DrostanQuest
+{
+    QUEST_THE_GREAT_HUNTERS_CHALLENGE   = 12592,
+};
+
+// 52546 - Initiate Kill Check
+struct InitiateKillCheck : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex /*effIdx*/) const override
+    {
+        Player* killer = nullptr;
+        if (spell->GetUnitTarget()->IsPlayer())
+            killer = static_cast<Player*>(spell->GetUnitTarget());
+        if (spell->GetUnitTarget()->IsPlayerControlled())
+            killer = const_cast<Player*>(spell->GetUnitTarget()->GetControllingPlayer());
+        if (!killer)
+            return;
+
+        uint32 questProgress = killer->GetReqKillOrCastCurrentCount(QUEST_THE_GREAT_HUNTERS_CHALLENGE, NPC_TIPSY_MCMANUS); // yes this is correct
+        switch (questProgress)
+        {
+            case 1: // spawn drostan
+                spell->GetUnitTarget()->CastSpell(nullptr, 52559, TRIGGERED_OLD_TRIGGERED);
+                break;
+        }
+    }
+};
+
+// 52556 - Summon Drostan
+struct SummonDrostan : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        Player* caster = dynamic_cast<Player*>(spell->GetCaster());
+        if (!caster)
+            return;
+
+        uint32 questProgress = caster->GetReqKillOrCastCurrentCount(QUEST_THE_GREAT_HUNTERS_CHALLENGE, NPC_TIPSY_MCMANUS);
+        switch (questProgress)
+        {
+            case 1:
+                // do stuff
+                break;
+        }
     }
 };
 
@@ -660,4 +720,7 @@ void AddSC_sholazar_basin()
     pNewScript->RegisterSelf();
 
     RegisterSpellScript<ShootRJR>("spell_shoot_rjr");
+    RegisterSpellScript<ParachutePeriodicDummy>("spell_parachute_periodic_dummy");
+    RegisterSpellScript<InitiateKillCheck>("spell_initiate_kill_check");
+    RegisterSpellScript<SummonDrostan>("spell_summon_drostan");
 }
