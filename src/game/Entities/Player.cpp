@@ -2844,20 +2844,16 @@ void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
     if (victim)
     {
 		uint32 victimLevel = victim -> GetLevel();
-		uint32 extraLevelXpBonus = static_cast<uint32>(2.5*((xp/sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)*victimLevel)));
-        // handle SPELL_AURA_MOD_KILL_XP_PCT auras
-        Unit::AuraList const& ModXPPctAuras = GetAurasByType(SPELL_AURA_MOD_KILL_XP_PCT);
-        for (auto ModXPPctAura : ModXPPctAuras)
-            xp = uint32(xp * (1.0f + ModXPPctAura->GetModifier()->m_amount / 100.0f));
+		uint32 extraLevelXpBonus = static_cast<uint32>(2.5f*((xp/sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)*victimLevel)));
     }
     else
     {
-				uint32 extraLevelXpBonus = static_cast<uint32>(2.5*((xp/sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)*level)));
+				uint32 extraLevelXpBonus = static_cast<uint32>(2.5f*((xp/sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)*level)));
+    }
         // handle SPELL_AURA_MOD_QUEST_XP_PCT auras
         Unit::AuraList const& ModXPPctAuras = GetAurasByType(SPELL_AURA_MOD_QUEST_XP_PCT);
         for (auto ModXPPctAura : ModXPPctAuras)
             xp = uint32(xp * (1.0f + ModXPPctAura->GetModifier()->m_amount / 100.0f));
-    }
 
     // XP resting bonus for kill
     uint32 bonus_xp;
@@ -2870,30 +2866,30 @@ void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
 
     uint32 curXP = GetUInt32Value(PLAYER_XP);
     uint32 nextLvlXP = GetUInt32Value(PLAYER_NEXT_LEVEL_XP);
-    uint32 extraLevelXp = static_cast<uint32>(2.5*((xp/sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)*level)));
+    uint32 extraLevelXp = static_cast<uint32>(2.5f*((xp/sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)*level)));
     //JIFEDIT: extra xp at higher level to account for each player leveling like 10 chars
 	extraLevelXp = extraLevelXp+extraLevelXpBonus;
 	uint32 newXP = curXP + xp + bonus_xp + extraLevelXp;
 	uint32 high = 0;
-	uint32 low = 0;
+	uint32 low = sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
     if (GetGroup())
     {
         Group::MemberSlotList const& groupSlot = GetGroup()->GetMemberSlots();
         for (const auto& memberItr : groupSlot)
         {
             Player* member = sObjectMgr.GetPlayer(memberItr.guid);
-            if (!member || !member->IsAlive())
-				if( member -> GetLevel() > high)
+            if (!member)
+				if( (member -> GetLevel()) > high)
 					high = static_cast<uint32>( member -> GetLevel() );
-				if( member -> GetLevel() < low)
+				if( (member -> GetLevel()) < low)
 					low = static_cast<uint32>( member -> GetLevel() );
         }
     }
-	uint32 mid = low+( (high-low)/2 );
-	uint32 diff = mid - level;
+	float mid = low+( (high-low)*0.5f );
+	float diff = mid - level;
 	if( diff > 10 ){diff = 10;};
 	if( diff < -10 ){diff = -10;};
-	float catchupMult = 1+(diff*0.025);
+	float catchupMult = 1+(diff*0.025f);
 	newXP = static_cast<uint32>(newXP*catchupMult);
     SendLogXPGain((xp+extraLevelXp), victim, GetXPRestBonus(xp),GetsRecruitAFriendBonus(), groupRate);
 
