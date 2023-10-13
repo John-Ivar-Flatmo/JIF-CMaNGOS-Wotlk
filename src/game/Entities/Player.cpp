@@ -3846,6 +3846,9 @@ void Player::learnSpell(uint32 spell_id, bool dependent, bool talent)
         data << uint32(spell_id);
         data << uint16(0);                                  // 3.3.3 unk
         GetSession()->SendPacket(data);
+#ifdef BUILD_ELUNA
+        sEluna->OnLearnSpell(this, spell_id);
+#endif
     }
 
     // learn all disabled higher ranks (recursive) - skip for talent spells
@@ -7525,6 +7528,10 @@ uint32 Player::GetLevelFromDB(ObjectGuid guid)
 
 void Player::UpdateArea(uint32 newArea)
 {
+#ifdef BUILD_ELUNA
+    uint32 oldArea = m_areaUpdateId;
+#endif
+
     // handle outdoor pvp zones
     sOutdoorPvPMgr.HandlePlayerLeaveArea(this, GetCachedZoneId(), m_areaUpdateId);
     sOutdoorPvPMgr.HandlePlayerEnterArea(this, GetCachedZoneId(), newArea);
@@ -7570,6 +7577,12 @@ void Player::UpdateArea(uint32 newArea)
         SetRestType(REST_TYPE_FACTION_AREA);
     else if (HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING) && GetRestType() != REST_TYPE_IN_TAVERN && GetRestType() != REST_TYPE_IN_CITY)
         SetRestType(REST_TYPE_NO);
+
+#ifdef BUILD_ELUNA
+    // We only want the hook to trigger when the old and new area is actually different
+    if (oldArea != newArea)
+        sEluna->OnUpdateArea(this, oldArea, newArea);
+#endif
 }
 
 bool Player::CanUseCapturePoint() const
@@ -11456,6 +11469,10 @@ Item* Player::StoreNewItem(ItemPosCountVec const& dest, uint32 item, bool update
         ItemAddedQuestCheck(item, count);
         GetAchievementMgr().UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_RECEIVE_EPIC_ITEM, item, count);
         pItem = StoreItem(dest, pItem, update);
+
+#ifdef BUILD_ELUNA
+        sEluna->OnAdd(this, pItem);
+#endif
     }
     return pItem;
 }
@@ -15412,6 +15429,10 @@ void Player::SetQuestStatus(uint32 quest_id, QuestStatus status)
     }
 
     UpdateForQuestWorldObjects();
+
+#ifdef BUILD_ELUNA
+    sEluna->OnQuestStatusChanged(this, quest_id, status);
+#endif
 }
 
 // not used in MaNGOS, but used in scripting code
