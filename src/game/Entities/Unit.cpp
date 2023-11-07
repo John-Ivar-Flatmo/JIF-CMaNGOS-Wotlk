@@ -1233,6 +1233,15 @@ void Unit::Kill(Unit* killer, Unit* victim, DamageEffectType damagetype, SpellEn
     if (responsiblePlayer)
         responsiblePlayer->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_GET_KILLING_BLOWS, 1, 0, victim);
 
+#ifdef BUILD_ELUNA
+    if (Creature* killerCre = killer->ToCreature())
+    {
+        // used by eluna
+        if (Player* killed = victim->ToPlayer())
+            sEluna->OnPlayerKilledByCreature(killerCre, killed);
+    }
+#endif
+
     // stop combat
     DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE, "DealDamageAttackStop");
     victim->CombatStop();
