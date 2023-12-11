@@ -2869,7 +2869,6 @@ void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
     uint32 extraLevelXp = static_cast<uint32>(2.5f*((xp/sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL)*level)));
     //JIFEDIT: extra xp at higher level to account for each player leveling like 10 chars
 	extraLevelXp = extraLevelXp+extraLevelXpBonus;
-	uint32 newXP = curXP + xp + bonus_xp + extraLevelXp;
 	uint32 high = 0;
 	uint32 low = sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
     if (GetGroup())
@@ -2890,8 +2889,16 @@ void Player::GiveXP(uint32 xp, Creature* victim, float groupRate)
 	if( diff > 10 ){diff = 10;};
 	if( diff < -10 ){diff = -10;};
 	float catchupMult = 1+(diff*0.025f);
-	newXP = static_cast<uint32>(newXP*catchupMult);
-    SendLogXPGain((xp+extraLevelXp), victim, GetXPRestBonus(xp),GetsRecruitAFriendBonus(), groupRate);
+	float xpC =  xp * catchupMult;
+	float bonus_xpC = bonus_xp * catchupMult;
+	float extraLevelXpC = extraLevelXp * catchupMult;
+
+	uint32 restXp = static_cast<uint32>(bonus_xpC);
+	uint32 gainedXp = static_cast<uint32>(xpC + bonus_xpC + extraLevelXpC);
+	uint32 gainedXpNoRest = static_cast<uint32>(xpC + extraLevelXpC);
+	uint32 newXP = curXP + gainedXp;
+
+    SendLogXPGain(gainedXpNoRest, victim, restXp, GetsRecruitAFriendBonus(), groupRate);
 
 
     while (newXP >= nextLvlXP && level < GetMaxAttainableLevel())
@@ -22162,6 +22169,7 @@ void Player::RewardSinglePlayerAtKill(Unit* pVictim)
         Creature* creatureVictim = static_cast<Creature*>(pVictim);
         RewardReputation(creatureVictim, 1);
         GiveXP(MaNGOS::XP::Gain(this, creatureVictim), creatureVictim);
+		GiveXP(MaNGOS::XP::Gain(this, creatureVictim), creatureVictim); //jifedit increased pet xp gain
 
         if (Pet* pet = GetPet())
             pet->GivePetXP(MaNGOS::XP::Gain(pet, creatureVictim));
