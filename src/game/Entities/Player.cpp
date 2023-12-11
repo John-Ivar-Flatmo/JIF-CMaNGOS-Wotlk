@@ -22169,7 +22169,6 @@ void Player::RewardSinglePlayerAtKill(Unit* pVictim)
         Creature* creatureVictim = static_cast<Creature*>(pVictim);
         RewardReputation(creatureVictim, 1);
         GiveXP(MaNGOS::XP::Gain(this, creatureVictim), creatureVictim);
-		GiveXP(MaNGOS::XP::Gain(this, creatureVictim), creatureVictim); //jifedit increased pet xp gain
 
         if (Pet* pet = GetPet())
             pet->GivePetXP(MaNGOS::XP::Gain(pet, creatureVictim));

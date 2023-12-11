@@ -892,7 +892,8 @@ void Pet::GivePetXP(uint32 xp)
         return;
 
     if (xp < 1)
-        return;
+		//return;
+        xp = 1;	//give xp instead so that leveling from low tiers is possible albeit inneficient
 
     if (!IsAlive())
         return;
@@ -909,6 +910,9 @@ void Pet::GivePetXP(uint32 xp)
         uint32 nextLvlXP = GetUInt32Value(UNIT_FIELD_PETNEXTLEVELEXP);
         uint32 curXP = GetUInt32Value(UNIT_FIELD_PETEXPERIENCE);
         uint32 newXP = curXP + xp;
+		float mid = level+( (maxlevel-level)*0.5f );
+		float diff = mid - level;
+		float catchupMult = 1+(diff*0.15f);
 
         while (newXP >= nextLvlXP && level < maxlevel)
         {
