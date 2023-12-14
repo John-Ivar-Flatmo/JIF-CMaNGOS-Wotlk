@@ -245,7 +245,7 @@ class CooldownContainer
         bool AddCooldown(TimePoint clockNow, uint32 spellId, uint32 duration, uint32 spellCategory = 0, uint32 categoryDuration = 0, uint32 itemId = 0, bool onHold = false)
         {
             RemoveBySpellId(spellId);
-            auto resultItr = m_spellIdMap.emplace(spellId, std::move(std::unique_ptr<CooldownData>(new CooldownData(clockNow, spellId, duration, spellCategory, categoryDuration, itemId, onHold))));
+            auto resultItr = m_spellIdMap.emplace(spellId, std::make_unique<CooldownData>(clockNow, spellId, duration, spellCategory, categoryDuration, itemId, onHold));
             // do not overwrite one permanent category cooldown with another permanent category cooldown
             if (resultItr.second && spellCategory && categoryDuration)
             {
@@ -1068,7 +1068,7 @@ class WorldObject : public Object
 
         float GetDistance(const WorldObject* obj, bool is3D = true, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS) const;
         float GetDistance(float x, float y, float z, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS, bool transport = false) const;
-        float GetDistance2d(float x, float y, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS) const;
+        float GetDistance2d(float x, float y, DistanceCalculation distcalc = DIST_CALC_BOUNDING_RADIUS, bool transport = false) const;
         float GetDistanceZ(const WorldObject* obj) const;
         bool IsInMapIgnorePhase(const WorldObject* obj) const // only to be used by spells which ignore phase during search and similar
         {

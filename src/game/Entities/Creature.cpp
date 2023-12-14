@@ -536,7 +536,9 @@ bool Creature::UpdateEntry(uint32 Entry, const CreatureData* data /*=nullptr*/, 
     uint32 faction = GetCreatureInfo()->Faction;
     if (data && data->spawnTemplate->faction)
         faction = data->spawnTemplate->faction;
-    setFaction(faction);
+    // update entry can occur during player vehicle ride - ignore faction change then
+    if (!HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && !hasUnitState(UNIT_STAT_POSSESSED))
+        setFaction(faction);
 
     SetDefaultGossipMenuId(GetCreatureInfo()->GossipMenuId);
 
@@ -558,13 +560,25 @@ bool Creature::UpdateEntry(uint32 Entry, const CreatureData* data /*=nullptr*/, 
     // we may need to append or remove additional flags
     if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT))
         unitFlags |= UNIT_FLAG_IN_COMBAT;
+    if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PET_IN_COMBAT))
+        unitFlags |= UNIT_FLAG_PET_IN_COMBAT;
+    if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
+        unitFlags |= UNIT_FLAG_PLAYER_CONTROLLED;
+    if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_POSSESSED))
+        unitFlags |= UNIT_FLAG_POSSESSED;
 
     // TODO: Get rid of this by fixing DB data, seems to be static
     if (m_movementInfo.HasMovementFlag(MOVEFLAG_SWIMMING))
         unitFlags |= UNIT_FLAG_SWIMMING;
 
+    uint32 unitFlags2 = GetCreatureInfo()->UnitFlags2;
+    if (HasFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH))
+        unitFlags2 |= UNIT_FLAG2_FEIGN_DEATH;
+    if (HasFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_CLONED))
+        unitFlags2 |= UNIT_FLAG2_CLONED;
+
     SetUInt32Value(UNIT_FIELD_FLAGS, unitFlags);
-    SetUInt32Value(UNIT_FIELD_FLAGS_2, GetCreatureInfo()->UnitFlags2);
+    SetUInt32Value(UNIT_FIELD_FLAGS_2, unitFlags2);
 
     // preserve all current dynamic flags if exist
     uint32 dynFlags = GetUInt32Value(UNIT_DYNAMIC_FLAGS);
@@ -1669,7 +1683,8 @@ bool Creature::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, uint32 forced
     m_respawnradius = data->spawndist;
 
     m_respawnDelay = data->GetRandomRespawnTime();
-    if (!IsUsingNewSpawningSystem())
+    bool isUsingNewSpawningSystem = IsUsingNewSpawningSystem();
+    if (!isUsingNewSpawningSystem)
         m_corpseDelay = std::min(m_respawnDelay * 9 / 10, m_corpseDelay); // set corpse delay to 90% of the respawn delay
     m_deathState = ALIVE;
 
@@ -1677,6 +1692,12 @@ bool Creature::LoadFromDB(uint32 dbGuid, Map* map, uint32 newGuid, uint32 forced
 
     if (m_respawnTime > time(nullptr))                         // not ready to respawn
     {
+        if (isUsingNewSpawningSystem && !group) // only at this point we know if marked as dynguid per entry
+        {
+            GetMap()->GetPersistentState()->RemoveCreatureFromGrid(GetDbGuid(), data);
+            GetMap()->GetSpawnManager().AddCreature(GetDbGuid());
+            return false;
+        }
         m_deathState = DEAD;
         SetHealth(0);
         if (CanFly())
@@ -1866,7 +1887,7 @@ void Creature::SetDeathState(DeathState s)
         {
             m_respawnTime = std::numeric_limits<time_t>::max();
             if (m_respawnDelay && s == JUST_DIED && !GetCreatureGroup())
-                GetMap()->GetSpawnManager().AddCreature(m_respawnDelay, GetDbGuid());
+                GetMap()->GetSpawnManager().AddCreature(GetDbGuid());
         }
     }
 

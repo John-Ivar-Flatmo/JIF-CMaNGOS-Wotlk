@@ -515,7 +515,7 @@ void Unit::ProcDamageAndSpell(ProcSystemArguments&& data)
 }
 
 ProcExecutionData::ProcExecutionData(ProcSystemArguments& data, bool isVictim) : attacker(data.attacker), victim(data.victim),
-    isVictim(isVictim), procExtra(data.procExtra), attType(data.attType), damage(data.damage), spellInfo(data.spellInfo), spell(data.spell), healthGain(data.healthGain), isHeal(data.isHeal),
+    isVictim(isVictim), procExtra(data.procExtra), attType(data.attType), damage(data.damage), absorb(data.absorb), spellInfo(data.spellInfo), spell(data.spell), healthGain(data.healthGain), isHeal(data.isHeal),
     triggeredByAura(nullptr), cooldown(0), triggeredSpellId(0), procOnce(false), triggerTarget(nullptr)
 {
     if (isVictim)
@@ -620,10 +620,10 @@ void Unit::ProcDamageAndSpellFor(ProcSystemArguments& argData, bool isVictim)
                             continue;
                     }
                     // don't check dbc FamilyFlags if schoolMask exists
-                    else if (!execData.triggeredByAura->CanProcFrom(execData.spellInfo, execData.procFlags, spellProcEvent->procEx, execData.procExtra, execData.damage != 0, !spellProcEvent->schoolMask))
+                    else if (!execData.triggeredByAura->CanProcFrom(execData.spellInfo, execData.procFlags, spellProcEvent->procEx, execData.procExtra, execData.damage != 0, execData.absorb != 0, !spellProcEvent->schoolMask))
                         continue;
                 }
-                else if (!execData.triggeredByAura->CanProcFrom(execData.spellInfo, execData.procFlags, PROC_EX_NONE, execData.procExtra, execData.damage != 0, true))
+                else if (!execData.triggeredByAura->CanProcFrom(execData.spellInfo, execData.procFlags, PROC_EX_NONE, execData.procExtra, execData.damage != 0, execData.absorb != 0, true))
                     continue;
             }
 
@@ -953,8 +953,9 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                 case 9799:
                 case 25988:
                 {
-                    // return damage % to attacker but < 50% own total health
-                    basepoints[0] = triggerAmount * int32(damage) / 100;
+
+                    // return absorb included damage % to attacker but < 50% own total health
+                    basepoints[0] = triggerAmount * int32(data.damage + data.absorb) / 100;
                     if (basepoints[0] > (int32)GetMaxHealth() / 2)
                         basepoints[0] = (int32)GetMaxHealth() / 2;
 
@@ -994,10 +995,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                         basepoints[0] = damage;
                     break;
                 }
-                // Twisted Reflection (boss spell)
-                case 21063:
-                    triggered_spell_id = 21064;
-                    break;
                 // Unstable Power
                 case 24658:
                 {
@@ -1612,17 +1609,6 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
                     pVictim->RemoveSpellsCausingAura(SPELL_AURA_PERIODIC_DAMAGE_PERCENT);
                     return SPELL_AURA_PROC_OK;
                 }
-                // Blessing of Ancient Kings
-                case 64411:
-                {
-                    // for DOT procs
-                    if (!IsPositiveSpell(spellInfo->Id))
-                        return SPELL_AURA_PROC_FAILED;
-
-                    triggered_spell_id = 64413;
-                    basepoints[0] = damage * 15 / 100;
-                    break;
-                }
             }
             break;
         }
@@ -2174,7 +2160,7 @@ SpellAuraProcResult Unit::HandleDummyAuraProc(ProcExecutionData& data)
             // Glyph of Mend Pet
             if (dummySpell->Id == 57870)
             {
-                pVictim->CastSpell(pVictim, 57894, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetObjectGuid());
+                pVictim->CastSpell(nullptr, 57894, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, GetObjectGuid());
                 return SPELL_AURA_PROC_OK;
             }
             // Misdirection
@@ -3240,13 +3226,6 @@ SpellAuraProcResult Unit::HandleProcTriggerSpellAuraProc(ProcExecutionData& data
                     if (Unit* caster = triggeredByAura->GetCaster())
                         caster->InterruptNonMeleeSpells(false);
                     return SPELL_AURA_PROC_OK;
-                }
-                case 64415:                                 // // Val'anyr Hammer of Ancient Kings - Equip Effect
-                {
-                    // for DOT procs
-                    if (!IsPositiveSpell(spellInfo->Id))
-                        return SPELL_AURA_PROC_FAILED;
-                    break;
                 }
                 case 64440:                                 // Blade Warding
                 {

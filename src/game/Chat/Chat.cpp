@@ -584,6 +584,7 @@ ChatCommand* ChatHandler::getCommandTable()
         { "showloot",       SEC_GAMEMASTER,     false, &ChatHandler::HandleNpcShowLootCommand,         "", nullptr },
         { "tempspawn",      SEC_GAMEMASTER,     false, &ChatHandler::HandleNpcTempSpawn,               "", nullptr },
         { "evade",          SEC_GAMEMASTER,     false, &ChatHandler::HandleNpcEvade,                   "", nullptr },
+        { "despawn",        SEC_GAMEMASTER,     false, &ChatHandler::HandleNpcDespawn,                 "", nullptr },
         { "formation",      SEC_GAMEMASTER,     false, nullptr,                                        "", npcFormationCommandTable },
         { "group",          SEC_GAMEMASTER,     false, nullptr,                                        "", npcGroupCommandTable },
 
@@ -1087,18 +1088,17 @@ ChatCommand* ChatHandler::getCommandTable()
         // check hardcoded part integrity
         CheckIntegrity(commandTable, nullptr);
 
-        QueryResult* result = WorldDatabase.Query("SELECT name,security,help FROM command");
-        if (result)
+        auto queryResult = WorldDatabase.Query("SELECT name,security,help FROM command");
+        if (queryResult)
         {
             do
             {
-                Field* fields = result->Fetch();
+                Field* fields = queryResult->Fetch();
                 std::string name = fields[0].GetCppString();
 
                 SetDataForCommandInTable(commandTable, name.c_str(), fields[1].GetUInt16(), fields[2].GetCppString());
             }
-            while (result->NextRow());
-            delete result;
+            while (queryResult->NextRow());
         }
     }
 

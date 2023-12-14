@@ -1727,13 +1727,14 @@ enum npc_aoe_damage_trigger
     NPC_VOID_ZONE = 16697,
     NPC_LESSER_SHADOW_FISSURE = 17471,
     NPC_LESSER_SHADOW_FISSURE_H = 20570,
-    NPC_WILD_SHADOW_FISSURE = 18370,
+    NPC_WILD_SHADOW_FISSURE = 18370, // nethekurse
     NPC_WILD_SHADOW_FISSURE_H = 20598,
 
     // m_uiAuraPassive
     SPELL_CONSUMPTION_NPC_16697 = 28874,
     SPELL_CONSUMPTION_NPC_17471 = 30497,
     SPELL_CONSUMPTION_NPC_20570 = 35952,
+    SPELL_CONSUMPTION_NPC_18370 = 32250,
 };
 
 struct npc_aoe_damage_triggerAI : public ScriptedAI
@@ -1761,6 +1762,9 @@ struct npc_aoe_damage_triggerAI : public ScriptedAI
                 return SPELL_CONSUMPTION_NPC_17471;
             case NPC_LESSER_SHADOW_FISSURE_H:
                 return SPELL_CONSUMPTION_NPC_20570;
+            case NPC_WILD_SHADOW_FISSURE:
+            case NPC_WILD_SHADOW_FISSURE_H:
+                return SPELL_CONSUMPTION_NPC_18370;
             default:
                 return SPELL_CONSUMPTION_NPC_17471;
         }
@@ -1934,6 +1938,11 @@ enum
 
     SPELL_HUNTER_SNAKE_TRAP_SCALING_01 = 62915,
 
+    SPELL_AVOIDANCE_HUNTER      = 65220,
+
+    SPELL_GLYPH_OF_SNAKE_TRAP   = 56849,
+    SPELL_GLYPH_OF_SNAKE_TRAP_AVOIDANCE_CUSTOM = 80001, // no spell in sniff
+
     // SPELL_RANDOM_AGGRO = 34701 // unk purpose
 };
 
@@ -1950,6 +1959,9 @@ struct npc_snakesAI : public ScriptedAI
         m_creature->GetMotionMaster()->MoveRandomAroundPoint(m_creature->GetPositionX(), m_creature->GetPositionY(), m_creature->GetPositionZ(), 5.f);
         DoCastSpellIfCan(nullptr, SPELL_DEADLY_POISON_PASSIVE, CAST_AURA_NOT_PRESENT | CAST_TRIGGERED);
         DoCastSpellIfCan(nullptr, SPELL_HUNTER_SNAKE_TRAP_SCALING_01, CAST_AURA_NOT_PRESENT | CAST_TRIGGERED);
+        if (Unit* spawner = m_creature->GetSpawner())
+            if (spawner->HasAura(SPELL_GLYPH_OF_SNAKE_TRAP)) // Glyph of Snake Trap
+                DoCastSpellIfCan(nullptr, SPELL_GLYPH_OF_SNAKE_TRAP_AVOIDANCE_CUSTOM, CAST_AURA_NOT_PRESENT | CAST_TRIGGERED);
     }
 
     void UpdateAI(const uint32 diff) override
@@ -1972,11 +1984,6 @@ struct npc_snakesAI : public ScriptedAI
         DoMeleeAttackIfReady();
     }
 };
-
-UnitAI* GetAI_npc_snakes(Creature* pCreature)
-{
-    return new npc_snakesAI(pCreature);
-}
 
 enum
 {
@@ -2446,6 +2453,7 @@ struct mob_phoenix_tkAI : public CombatAI
             SetMeleeEnabled(true);
             DoStartMovement(m_creature->GetVictim());
             SetCombatScriptStatus(false);
+            SetDeathPrevention(true);
             m_creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNINTERACTIBLE);
 
             DoCastSpellIfCan(nullptr, m_burnSpellId, CAST_TRIGGERED);
@@ -3184,7 +3192,7 @@ void AddSC_npcs_special()
 
     pNewScript = new Script;
     pNewScript->Name = "npc_snakes";
-    pNewScript->GetAI = &GetAI_npc_snakes;
+    pNewScript->GetAI = &GetNewAIInstance<npc_snakesAI>;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;

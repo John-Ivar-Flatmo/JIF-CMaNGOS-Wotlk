@@ -29,8 +29,7 @@ EndScriptData */
 2 - Gruul event
 */
 
-instance_gruuls_lair::instance_gruuls_lair(Map* pMap) : ScriptedInstance(pMap),
-    m_uiCouncilMembersDied(0)
+instance_gruuls_lair::instance_gruuls_lair(Map* pMap) : ScriptedInstance(pMap)
 {
     Initialize();
 }
@@ -76,18 +75,7 @@ void instance_gruuls_lair::SetData(uint32 uiType, uint32 uiData)
 {
     switch (uiType)
     {
-        case TYPE_MAULGAR_EVENT:
-            if (uiData == SPECIAL)
-            {
-                ++m_uiCouncilMembersDied;
-
-                if (m_uiCouncilMembersDied == MAX_COUNCIL)
-                    SetData(TYPE_MAULGAR_EVENT, DONE);
-                // Don't store special data
-                break;
-            }
-            if (uiData == FAIL)
-                m_uiCouncilMembersDied = 0;
+        case TYPE_MAULGAR_EVENT:            
             if (uiData == DONE)
                 DoUseDoorOrButton(GO_PORT_GRONN_1);
             m_auiEncounter[uiType] = uiData;

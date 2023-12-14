@@ -416,7 +416,11 @@ void CreatureGroup::TriggerLinkingEvent(uint32 event, Unit* target)
     switch (event)
     {
         case CREATURE_GROUP_EVENT_AGGRO:
-            if ((m_entry.Flags & CREATURE_GROUP_AGGRO_TOGETHER) == 0)
+            if ((m_entry.Flags & CREATURE_GROUP_AGGRO_TOGETHER) == 0 || !target)
+                return;
+
+            // disallow aggro of a group member
+            if (!target->HasCharmer() && m_objects.find(target->GetDbGuid()) != m_objects.end())
                 return;
 
             for (auto& data : m_objects)

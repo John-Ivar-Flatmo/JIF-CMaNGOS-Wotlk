@@ -32,6 +32,25 @@ void world_map_northrend::OnCreatureCreate(Creature* creature)
 
 void world_map_northrend::SetData(uint32 /*uiType*/, uint32 /*uiData*/) {}
 
+void world_map_northrend::SetData64(uint32 data, uint64 value)
+{
+    switch (data)
+    {
+        case 11961: // Spirits Watch Over Us
+            if (value) // 1 turn on weather
+                instance->SetZoneWeather(0, 4040, 8, 1.f);
+            else // 0 turn off weather
+                instance->SetZoneWeather(0, 4040, 0, 0.f);
+            break;
+        case 12537: // Lightning Definitely Strikes Twice
+            if (value) // 1 turn on weather
+                instance->SetZoneWeather(0, 4306, 5, 1.f);
+            else // 0 turn off weather
+                instance->SetZoneWeather(0, 4306, 0, 0.f);
+            break;
+    }
+}
+
 void world_map_northrend::SetDalaranCooldownTime(ObjectGuid playerGuid)
 {
     m_dalaranAreatriggerCooldown.emplace(playerGuid, instance->GetCurrentClockTime());

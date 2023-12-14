@@ -250,10 +250,10 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
 
     if (pItem->HasFlag(ITEM_FIELD_FLAGS, ITEM_DYNFLAG_WRAPPED))// wrapped?
     {
-        QueryResult* result = CharacterDatabase.PQuery("SELECT entry, flags FROM character_gifts WHERE item_guid = '%u'", pItem->GetGUIDLow());
-        if (result)
+        auto queryResult = CharacterDatabase.PQuery("SELECT entry, flags FROM character_gifts WHERE item_guid = '%u'", pItem->GetGUIDLow());
+        if (queryResult)
         {
-            Field* fields = result->Fetch();
+            Field* fields = queryResult->Fetch();
             uint32 entry = fields[0].GetUInt32();
             uint32 flags = fields[1].GetUInt32();
 
@@ -261,7 +261,6 @@ void WorldSession::HandleOpenItemOpcode(WorldPacket& recvPacket)
             pItem->SetEntry(entry);
             pItem->SetUInt32Value(ITEM_FIELD_FLAGS, flags);
             pItem->SetState(ITEM_CHANGED, pUser);
-            delete result;
         }
         else
         {
@@ -347,7 +346,7 @@ void WorldSession::HandleGameObjectUseOpcode(WorldPacket& recv_data)
     {
         float x, y;
         std::tie(x, y) = obj->GetClosestChairSlotPosition(_player);
-        if (_player->GetDistance(x, y, obj->GetPositionZ(), DIST_CALC_NONE) > 3.f * 3.f)
+        if (_player->GetDistance(x, y, obj->GetPositionZ(), DIST_CALC_NONE, obj->GetTransport()) > 3.f * 3.f)
             return;
     }
 
@@ -530,6 +529,10 @@ void WorldSession::HandleCancelAuraOpcode(WorldPacket& recvPacket)
     SpellAuraHolder* holder = _player->GetSpellAuraHolder(spellId);
 
     if (!holder)
+        return;
+
+    // cant remove any auras while possessed
+    if (_player->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_POSSESSED) || _player->HasCharmer())
         return;
 
     if (!holder->IsPositive())

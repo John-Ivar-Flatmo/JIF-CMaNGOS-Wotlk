@@ -22,6 +22,7 @@
 #include "AI/BaseAI/TotemAI.h"
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
 
+// 6495 - Sentry Totem
 struct SentryTotem : public SpellScript, public AuraScript
 {
     void OnRadiusCalculate(Spell* /*spell*/, SpellEffectIndex effIdx, bool targetB, float& radius) const override
@@ -88,6 +89,7 @@ struct SentryTotemAI : public TotemAI
     }
 };
 
+// 974 - Earth Shield
 struct EarthShield : public AuraScript
 {
     int32 OnAuraValueCalculate(AuraCalcData& data, int32 value) const override
@@ -256,6 +258,87 @@ struct HeroismBloodlust : public SpellScript
     }
 };
 
+// 1535 - Fire Nova
+struct FireNovaShaman : public SpellScript
+{
+    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
+    {
+        // fire totems slot
+        if (!spell->GetCaster()->GetTotemGuid(TOTEM_SLOT_FIRE))
+            return SPELL_FAILED_TOTEMS;
+        return SPELL_CAST_OK;
+    }
+
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (effIdx != EFFECT_INDEX_0)
+            return;
+
+        // fire totems slot
+        Totem* totem = spell->GetCaster()->GetTotem(TOTEM_SLOT_FIRE);
+        if (!totem)
+            return;
+
+        uint32 triggered_spell_id;
+        switch (spell->m_spellInfo->Id)
+        {
+            case 1535:  triggered_spell_id = 8349;  break;
+            case 8498:  triggered_spell_id = 8502;  break;
+            case 8499:  triggered_spell_id = 8503;  break;
+            case 11314: triggered_spell_id = 11306; break;
+            case 11315: triggered_spell_id = 11307; break;
+            case 25546: triggered_spell_id = 25535; break;
+            case 25547: triggered_spell_id = 25537; break;
+            case 61649: triggered_spell_id = 61650; break;
+            case 61657: triggered_spell_id = 61654; break;
+            default: return;
+        }
+
+        totem->CastSpell(totem, triggered_spell_id, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, spell->GetCaster()->GetObjectGuid());
+
+        // Fire Nova Visual
+        totem->CastSpell(nullptr, 19823, TRIGGERED_OLD_TRIGGERED, nullptr, nullptr, spell->GetCaster()->GetObjectGuid());
+    }
+};
+
+// 51474 - Astral Shift
+struct AstralShiftShaman : public AuraScript
+{
+    void OnAbsorb(Aura* aura, int32& currentAbsorb, int32& remainingDamage, uint32& reflectedSpellId, int32& /*reflectDamage*/, bool& /*preventedDeath*/, bool& /*dropCharge*/, DamageEffectType /*damageType*/) const override
+    {
+        // while affected by Stun and Fear
+        if (aura->GetTarget()->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED | UNIT_FLAG_FLEEING | UNIT_FLAG_SILENCED))
+            remainingDamage -= remainingDamage * currentAbsorb / 100;
+    }
+};
+
+// 51505 - Lava Burst
+struct LavaBurst : public SpellScript
+{
+    void OnEffectExecute(Spell* spell, SpellEffectIndex effIdx) const override
+    {
+        if (spell->GetUnitTarget()->GetAura(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_SHAMAN, uint64(0x0000000010000000), 0, spell->GetCaster()->GetObjectGuid()))
+            spell->SetGuaranteedCrit();
+    }
+};
+
+// 55438 - Glyph of Lesser Healing Wave
+struct GlyphOfLesserHealingWave : public AuraScript
+{
+    void OnApply(Aura* aura, bool apply) const override
+    {
+        if (aura->GetEffIndex() == EFFECT_INDEX_0)
+            aura->GetTarget()->RegisterScriptedLocationAura(aura, SCRIPT_LOCATION_SPELL_HEALING_DONE, apply);
+    }
+
+    void OnDamageCalculate(Aura* aura, Unit* /*attacker*/, Unit* victim, int32& /*advertisedBenefit*/, float& totalMod) const override
+    {
+        // Earth Shield
+        if (victim->GetAura(SPELL_AURA_DUMMY, SPELLFAMILY_SHAMAN, uint64(0x0000040000000000), 0, aura->GetTarget()->GetObjectGuid()))
+            totalMod *= (aura->GetModifier()->m_amount + 100.0f) / 100.0f;
+    }
+};
+
 void LoadShamanScripts()
 {
     Script* pNewScript = new Script;
@@ -273,4 +356,8 @@ void LoadShamanScripts()
     RegisterSpellScript<StoneclawTotem>("spell_stoneclaw_totem");
     RegisterSpellScript<StoneclawTotemAbsorb>("spell_stoneclaw_totem_absorb");
     RegisterSpellScript<HeroismBloodlust>("spell_heroism_bloodlust");
+    RegisterSpellScript<FireNovaShaman>("spell_fire_nova_shaman");
+    RegisterSpellScript<AstralShiftShaman>("spell_astral_shift_shaman");
+    RegisterSpellScript<LavaBurst>("spell_lava_burst");
+    RegisterSpellScript<GlyphOfLesserHealingWave>("spell_glyph_of_lesser_healing_wave");
 }

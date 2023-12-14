@@ -292,6 +292,7 @@ enum AuraScriptLocation : uint32
     SCRIPT_LOCATION_SPELL_DAMAGE_TAKEN,
     SCRIPT_LOCATION_SPELL_HEALING_DONE,
     SCRIPT_LOCATION_SPELL_HEALING_TAKEN,
+    SCRIPT_LOCATION_CRIT_CHANCE,
     SCRIPT_LOCATION_MAX,
 };
 
@@ -801,6 +802,7 @@ struct ProcSystemArguments
     uint32 procExtra;
 
     uint32 damage; // contains full heal or full damage
+    uint32 absorb; // absorbed damage
     SpellEntry const* spellInfo;
     WeaponAttackType attType;
 
@@ -810,7 +812,7 @@ struct ProcSystemArguments
     uint32 healthGain;
     bool isHeal;
 
-    explicit ProcSystemArguments(Unit* attacker, Unit* victim, uint32 procFlagsAttacker, uint32 procFlagsVictim, uint32 procExtra, uint32 amount, WeaponAttackType attType = BASE_ATTACK,
+    explicit ProcSystemArguments(Unit* attacker, Unit* victim, uint32 procFlagsAttacker, uint32 procFlagsVictim, uint32 procExtra, uint32 amount, uint32 absorb, WeaponAttackType attType = BASE_ATTACK,
         SpellEntry const* spellInfo = nullptr, Spell* spell = nullptr, uint32 healthGain = 0, bool isHeal = false) : attacker(attacker), victim(victim), procFlagsAttacker(procFlagsAttacker), procFlagsVictim(procFlagsVictim), procExtra(procExtra), damage(amount),
         spellInfo(spellInfo), attType(attType), spell(spell), healthGain(healthGain), isHeal(isHeal)
     {
@@ -834,6 +836,7 @@ struct ProcExecutionData
 
     WeaponAttackType attType;
     uint32 damage; // contains full heal or full damage
+    uint32 absorb; // absorbed damage
     SpellEntry const* spellInfo; // filled always even on aura tick
 
     Spell* spell; // only filled on direct spell execution
@@ -1267,7 +1270,7 @@ class Unit : public WorldObject
          */
         bool CanUseEquippedWeapon(WeaponAttackType attackType) const
         {
-            if (IsNoWeaponShapeShift())
+            if (IsAttackSpeedOverridenShapeShift())
                 return false;
 
             switch (attackType)
@@ -2083,6 +2086,7 @@ class Unit : public WorldObject
 
         bool IsShapeShifted() const;
         bool IsNoWeaponShapeShift() const;
+        bool IsAttackSpeedOverridenShapeShift() const;
 
         bool IsInDisallowedMountForm() const
         {
@@ -2183,7 +2187,7 @@ class Unit : public WorldObject
         void TauntUpdate();
         void FixateTarget(Unit* taunter);
         ThreatManager& getThreatManager() { return GetCombatData()->threatManager; }
-        ThreatManager const& getThreatManager() const { return const_cast<Unit*>(this)->GetCombatData()->threatManager; }
+        ThreatManager const& getThreatManager() const { return GetCombatData()->threatManager; }
         void addHatedBy(HostileReference* pHostileReference) { GetCombatData()->hostileRefManager.insertFirst(pHostileReference); };
         void removeHatedBy(HostileReference* /*pHostileReference*/) { /* nothing to do yet */ }
         HostileRefManager& getHostileRefManager() { return GetCombatData()->hostileRefManager; }
@@ -2192,7 +2196,7 @@ class Unit : public WorldObject
         bool GetNoThreatState() { return m_noThreat; }
 
         CombatManager& GetCombatManager() { return m_combatManager; }
-        CombatManager const& GetCombatManager() const { return const_cast<Unit*>(this)->m_combatManager; }
+        CombatManager const& GetCombatManager() const { return m_combatManager; }
         void TriggerEvadeEvents();
         void TriggerHomeEvents();
         void EvadeTimerExpired();
@@ -2557,7 +2561,7 @@ class Unit : public WorldObject
         Aura* GetOverrideScript(uint32 id) const;
         void RegisterOverrideScriptAura(Aura* aura, uint32 id, bool apply);
         void RegisterScriptedLocationAura(Aura* aura, AuraScriptLocation location, bool apply); // Spell scripting - requires correctly set spell_affect
-        std::vector<Aura*>& GetScriptedLocationAuras(AuraScriptLocation location) { return m_scriptedLocations[location]; }
+        std::vector<Aura*> const& GetScriptedLocationAuras(AuraScriptLocation location) const;
 
         uint8 GetComboPoints() const { return m_comboPoints; }
         ObjectGuid const& GetComboTargetGuid() const { return m_comboTargetGuid; }
@@ -2595,6 +2599,9 @@ class Unit : public WorldObject
 
         virtual bool IsNoWeaponSkillGain() const { return false; }
         virtual bool IsPreventingDeath() const { return false; }
+
+        void SetRootVehicle(const ObjectGuid& guid) { m_rootVehicle = guid; }
+        const ObjectGuid& GetRootVehicle() const { return m_rootVehicle; }
 
     protected:
         bool MeetsSelectAttackingRequirement(Unit* target, SpellEntry const* spellInfo, uint32 selectFlags, SelectAttackingTargetParams params, int32 unitConditionId) const;
@@ -2681,6 +2688,7 @@ class Unit : public WorldObject
         void DisableSpline();
         bool m_isCreatureLinkingTrigger;
         bool m_isSpawningLinked;
+        ObjectGuid m_rootVehicle;
 
         CombatData* m_combatData;
         CombatManager m_combatManager;

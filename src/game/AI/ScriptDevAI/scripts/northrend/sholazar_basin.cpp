@@ -17,13 +17,12 @@
 /* ScriptData
 SDName: Sholazar_Basin
 SD%Complete: 100
-SDComment: Quest support: 12570, 12644, 12688
+SDComment: Quest support: 12644, 12688
 SDCategory: Sholazar Basin
 EndScriptData */
 
 /* ContentData
 npc_helice
-npc_injured_rainspeaker
 npc_tipsy_mcmanus
 npc_wants_fruit_credit
 go_quest_still_at_it_credit
@@ -196,133 +195,6 @@ bool QuestAccept_npc_helice(Player* pPlayer, Creature* pCreature, const Quest* p
 
     return false;
 }
-
-/*######
-## npc_injured_rainspeaker
-######*/
-
-enum
-{
-    QUEST_FORTUNATE_MISUNDERSTAND       = 12570,
-
-    GOSSIP_ITEM_READY                   = -3000103,
-
-    SAY_ACCEPT                          = -1000605,
-    SAY_START                           = -1000606,
-    SAY_END_1                           = -1000607,
-    SAY_END_2                           = -1000608,
-    SAY_TRACKER                         = -1000609,         // not used in escort (aggro text for trackers? something for vekjik?)
-
-    NPC_FRENZYHEART_TRACKER             = 28077,
-
-    SPELL_ORACLE_ESCORT_START           = 51341,            // unknown purpose
-    SPELL_FEIGN_DEATH                   = 51329,
-    SPELL_ORACLE_INTRO                  = 51448,
-};
-
-struct npc_injured_rainspeakerAI : public npc_escortAI
-{
-    npc_injured_rainspeakerAI(Creature* pCreature) : npc_escortAI(pCreature) { Reset(); }
-
-    void Reset() override { }
-
-    void JustStartedEscort() override
-    {
-        if (Player* pPlayer = GetPlayerForEscort())
-        {
-            DoScriptText(SAY_START, m_creature, pPlayer);
-            DoCastSpellIfCan(m_creature, SPELL_ORACLE_ESCORT_START);
-        }
-    }
-
-    void WaypointReached(uint32 uiPointId) override
-    {
-        switch (uiPointId)
-        {
-            case 23:
-            {
-                if (Player* pPlayer = GetPlayerForEscort())
-                {
-                    DoScriptText(SAY_END_1, m_creature, pPlayer);
-                    DoCastSpellIfCan(m_creature, SPELL_ORACLE_INTRO);
-                }
-                break;
-            }
-            case 24:
-            {
-                DoScriptText(SAY_END_2, m_creature);
-
-                // location behind
-                float fAngle = m_creature->GetOrientation();
-                fAngle += M_PI_F;
-
-                float fX, fY, fZ;
-                m_creature->GetNearPoint(m_creature, fX, fY, fZ, 0.0f, 15.0f, fAngle);
-
-                m_creature->SummonCreature(NPC_FRENZYHEART_TRACKER, fX, fY, fZ, m_creature->GetOrientation(), TEMPSPAWN_TIMED_DESPAWN, 30000);
-                break;
-            }
-        }
-    }
-
-    void UpdateEscortAI(const uint32 /*uiDiff*/) override
-    {
-        if (!m_creature->SelectHostileTarget() || !m_creature->GetVictim())
-            return;
-
-        DoMeleeAttackIfReady();
-    }
-};
-
-UnitAI* GetAI_npc_injured_rainspeaker(Creature* pCreature)
-{
-    return new npc_injured_rainspeakerAI(pCreature);
-}
-
-bool QuestAccept_npc_injured_rainspeaker(Player* pPlayer, Creature* pCreature, const Quest* pQuest)
-{
-    if (pQuest->GetQuestId() == QUEST_FORTUNATE_MISUNDERSTAND)
-    {
-        pCreature->RemoveAurasDueToSpell(SPELL_FEIGN_DEATH);
-        DoScriptText(SAY_ACCEPT, pCreature, pPlayer);
-
-        // Workaround, GossipHello/GossipSelect doesn't work well when object already has gossip from database
-        if (npc_injured_rainspeakerAI* pEscortAI = dynamic_cast<npc_injured_rainspeakerAI*>(pCreature->AI()))
-        {
-            pEscortAI->Start(true, pPlayer, pQuest);
-            pCreature->SetFactionTemporary(FACTION_ESCORT_N_NEUTRAL_PASSIVE, TEMPFACTION_RESTORE_RESPAWN);
-        }
-    }
-
-    return false;
-}
-
-/*
-bool GossipHello_npc_injured_rainspeaker(Player* pPlayer, Creature* pCreature)
-{
-    if (pPlayer->GetQuestStatus(QUEST_FORTUNATE_MISUNDERSTAND) == QUEST_STATUS_INCOMPLETE)
-    {
-        pPlayer->ADD_GOSSIP_ITEM_ID(GOSSIP_ICON_CHAT, GOSSIP_ITEM_READY, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-        pPlayer->SEND_GOSSIP_MENU(pPlayer->GetGossipTextId(pCreature), pCreature->GetObjectGuid());
-        return true;
-    }
-
-    return false;
-}
-
-bool GossipSelect_npc_injured_rainspeaker(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction)
-{
-    if (uiAction == GOSSIP_ACTION_INFO_DEF)
-    {
-        pPlayer->CLOSE_GOSSIP_MENU();
-
-        if (npc_injured_rainspeakerAI* pEscortAI = dynamic_cast<npc_injured_rainspeakerAI*>(pCreature->AI()))
-            pEscortAI->Start(true, pPlayer);
-    }
-
-    return false;
-}
-*/
 
 /*######
 ## npc_tipsy_mcmanus
@@ -498,6 +370,7 @@ struct npc_tipsy_mcmanusAI : public ScriptedAI
                     // complete event
                     case 9:
                         DoScriptText(SAY_DISTILLATION_COMPLETE, m_creature);
+                        m_creature->GetMotionMaster()->MoveWaypoint();
                         if (GameObject* pPunch = GetClosestGameObjectWithEntry(m_creature, GO_THUNDERBREW_JUNGLE_PUNCH, 10.0f))
                         {
                             pPunch->SetRespawnTime(30);
@@ -660,9 +533,19 @@ struct InitiateKillCheck : public SpellScript
         uint32 questProgress = killer->GetReqKillOrCastCurrentCount(QUEST_THE_GREAT_HUNTERS_CHALLENGE, NPC_TIPSY_MCMANUS); // yes this is correct
         switch (questProgress)
         {
-            case 1: // spawn drostan
-                spell->GetUnitTarget()->CastSpell(nullptr, 52559, TRIGGERED_OLD_TRIGGERED);
+            case 6:
+            case 11:
+            case 21:
+            case 28:
+            case 35:
+            case 41:
+            case 49:
+            case 56:
+                // summon drostan
+            {
+                spell->GetUnitTarget()->CastSpell(nullptr, 52556, TRIGGERED_OLD_TRIGGERED); // spell 52559 should be used (replace when fixed) 
                 break;
+            }
         }
     }
 };
@@ -679,10 +562,219 @@ struct SummonDrostan : public SpellScript
         uint32 questProgress = caster->GetReqKillOrCastCurrentCount(QUEST_THE_GREAT_HUNTERS_CHALLENGE, NPC_TIPSY_MCMANUS);
         switch (questProgress)
         {
-            case 1:
-                // do stuff
+            case 6:
+                spell->GetCaster()->CastSpell(nullptr, 52585, TRIGGERED_OLD_TRIGGERED);
+                break;
+            case 11:
+                spell->GetCaster()->CastSpell(nullptr, 52725, TRIGGERED_OLD_TRIGGERED);
+                break;
+            case 21:
+                spell->GetCaster()->CastSpell(nullptr, 52726, TRIGGERED_OLD_TRIGGERED);
+                break;
+            case 28:
+                spell->GetCaster()->CastSpell(nullptr, 52727, TRIGGERED_OLD_TRIGGERED);
+                break;
+            case 35:
+                spell->GetCaster()->CastSpell(nullptr, 52728, TRIGGERED_OLD_TRIGGERED);
+                break;
+            case 41:
+                spell->GetCaster()->CastSpell(nullptr, 52729, TRIGGERED_OLD_TRIGGERED);
+                break;
+            case 49:
+                spell->GetCaster()->CastSpell(nullptr, 52730, TRIGGERED_OLD_TRIGGERED);
+                break;
+            case 56:
+                spell->GetCaster()->CastSpell(nullptr, 52731, TRIGGERED_OLD_TRIGGERED);
                 break;
         }
+    }
+};
+
+// 51962 - Offer Jungle Punch
+struct OfferJunglePunch : public SpellScript
+{
+    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
+    {
+        Unit* target = spell->m_targets.getUnitTarget();
+        // can be cast only on these targets
+        if (target && target->GetEntry() != 27986 && target->GetEntry() != 28047 && target->GetEntry() != 28568)
+            return SPELL_FAILED_BAD_TARGETS;
+
+        return SPELL_CAST_OK;
+    }
+};
+
+// 51759 - Summon and Mount Stampy
+struct SummonAndMountStampy : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+    }
+};
+
+// 52218 - Vic's Flying Machine
+struct VicsFlyingMachine : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+    }
+};
+
+// 51186 - Summon Goregek the Bristlepine Hunter
+struct SummonGoregekTheBristlepineHunter : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+    }
+};
+
+// 51188 - Summon Dajik the Wasp Hunter
+struct SummonDajikTheWaspHunter : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+    }
+};
+
+// 51189 - Summon Zepik the Gorloc Hunter
+struct SummonZepikTheGorlocHunter : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+        summon->SetDefaultGossipMenuId(summon->GetCreatureInfo()->GossipMenuId);
+    }
+};
+
+// 51190 - Summon Lafoo
+struct SummonLafoo : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+    }
+};
+
+// 51191 - Summon Jaloot
+struct SummonJaloot : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+    }
+};
+
+// 51192 - Summon Moodle
+struct SummonMoodle : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+        summon->SetDefaultGossipMenuId(summon->GetCreatureInfo()->GossipMenuId);
+    }
+};
+
+// 51257 - Summon Possessed Crocolisk
+struct SummonPossessedCrocolisk : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+    }
+};
+
+// 52276 - Summon Kartak
+struct SummonKartak : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+    }
+};
+
+// 52333 - Summon Soo-holu
+struct SummonSooholu : public SpellScript
+{
+    void OnSummon(Spell* spell, Creature* summon) const override
+    {
+        summon->SelectLevel(spell->GetCaster()->GetLevel());
+    }
+};
+
+// 52862 - Devour Wind
+struct DevourWind : public SpellScript
+{
+    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
+    {
+        Unit* target = spell->m_targets.getUnitTarget();
+        if (!target || !target->IsCreature() || static_cast<Creature*>(target)->HasBeenHitBySpell(spell->m_spellInfo->Id))
+            return SPELL_FAILED_BAD_TARGETS;
+
+        if (target->GetEntry() != 28858)
+            return SPELL_FAILED_BAD_TARGETS;
+
+        return SPELL_CAST_OK;
+    }
+
+    void OnCast(Spell* spell) const override
+    {
+        // transform visual
+        spell->GetCaster()->CastSpell(nullptr, 52866, TRIGGERED_OLD_TRIGGERED);
+
+        if (!spell->GetCaster()->IsCreature())
+            return;
+
+        // change into water
+        Creature* caster = static_cast<Creature*>(spell->GetCaster());
+        caster->UpdateEntry(28985);
+        caster->GetCharmInfo()->InitVehicleCreateSpells();
+        if (Player* player = dynamic_cast<Player*>(caster->GetCharmer()))
+            player->VehicleSpellInitialize();
+    }
+};
+
+// 52864 - Devour Water
+struct DevourWater : public SpellScript
+{
+    SpellCastResult OnCheckCast(Spell* spell, bool /*strict*/) const override
+    {
+        Unit* target = spell->m_targets.getUnitTarget();
+        if (!target || !target->IsCreature() || static_cast<Creature*>(target)->HasBeenHitBySpell(spell->m_spellInfo->Id))
+            return SPELL_FAILED_BAD_TARGETS;
+
+        if (target->GetEntry() != 28862)
+            return SPELL_FAILED_BAD_TARGETS;
+
+        return SPELL_CAST_OK;
+    }
+
+    void OnCast(Spell* spell) const override
+    {
+        // transform visual
+        spell->GetCaster()->CastSpell(nullptr, 52866, TRIGGERED_OLD_TRIGGERED);
+
+        if (!spell->GetCaster()->IsCreature())
+            return;
+
+        // change into water
+        Creature* caster = static_cast<Creature*>(spell->GetCaster());
+        caster->UpdateEntry(28999);
+        caster->GetCharmInfo()->InitVehicleCreateSpells();
+        if (Player* player = dynamic_cast<Player*>(caster->GetCharmer()))
+            player->VehicleSpellInitialize();
+    }
+};
+
+// 53032 - Flurry of Claws
+struct FlurryOfClaws : public AuraScript
+{
+    void OnPeriodicDummy(Aura* aura) const override
+    {
+        aura->GetTarget()->CastSpell(nullptr, 74566, TRIGGERED_OLD_TRIGGERED);
     }
 };
 
@@ -692,14 +784,6 @@ void AddSC_sholazar_basin()
     pNewScript->Name = "npc_helice";
     pNewScript->GetAI = &GetAI_npc_helice;
     pNewScript->pQuestAcceptNPC = &QuestAccept_npc_helice;
-    pNewScript->RegisterSelf();
-
-    pNewScript = new Script;
-    pNewScript->Name = "npc_injured_rainspeaker";
-    pNewScript->GetAI = &GetAI_npc_injured_rainspeaker;
-    pNewScript->pQuestAcceptNPC = &QuestAccept_npc_injured_rainspeaker;
-    // pNewScript->pGossipHello = &GossipHello_npc_injured_rainspeaker;
-    // pNewScript->pGossipSelect = &GossipSelect_npc_injured_rainspeaker;
     pNewScript->RegisterSelf();
 
     pNewScript = new Script;
@@ -723,4 +807,19 @@ void AddSC_sholazar_basin()
     RegisterSpellScript<ParachutePeriodicDummy>("spell_parachute_periodic_dummy");
     RegisterSpellScript<InitiateKillCheck>("spell_initiate_kill_check");
     RegisterSpellScript<SummonDrostan>("spell_summon_drostan");
+    RegisterSpellScript<OfferJunglePunch>("spell_offer_jungle_punch");
+    RegisterSpellScript<SummonAndMountStampy>("spell_summon_and_mount_stampy");
+    RegisterSpellScript<VicsFlyingMachine>("spell_vics_flying_machine");
+    RegisterSpellScript<SummonGoregekTheBristlepineHunter>("spell_summon_goregek_the_bristlepine_hunter");
+    RegisterSpellScript<SummonDajikTheWaspHunter>("spell_summon_dajik_the_wasp_hunter");
+    RegisterSpellScript<SummonZepikTheGorlocHunter>("spell_summon_zepik_the_gorloc_hunter");
+    RegisterSpellScript<SummonLafoo>("spell_summon_lafoo");
+    RegisterSpellScript<SummonJaloot>("spell_summon_jaloot");
+    RegisterSpellScript<SummonMoodle>("spell_summon_moodle");
+    RegisterSpellScript<SummonPossessedCrocolisk>("spell_summon_possessed_crocolisk");
+    RegisterSpellScript<SummonKartak>("spell_summon_kartak");
+    RegisterSpellScript<SummonSooholu>("spell_summon_sooholu");
+    RegisterSpellScript<DevourWind>("spell_devour_wind");
+    RegisterSpellScript<DevourWater>("spell_devour_water");
+    RegisterSpellScript<FlurryOfClaws>("spell_flurry_of_claws");
 }

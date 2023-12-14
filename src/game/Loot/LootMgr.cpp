@@ -105,15 +105,15 @@ void LootStore::LoadLootTable()
     Clear();
 
     //                                                 0      1     2                    3        4              5         6
-    QueryResult* result = WorldDatabase.PQuery("SELECT entry, item, ChanceOrQuestChance, groupid, mincountOrRef, maxcount, condition_id FROM %s", GetName());
+    auto queryResult = WorldDatabase.PQuery("SELECT entry, item, ChanceOrQuestChance, groupid, mincountOrRef, maxcount, condition_id FROM %s", GetName());
 
-    if (result)
+    if (queryResult)
     {
-        BarGoLink bar(result->GetRowCount());
+        BarGoLink bar(queryResult->GetRowCount());
 
         do
         {
-            Field* fields = result->Fetch();
+            Field* fields = queryResult->Fetch();
             bar.step();
 
             uint32 entry               = fields[0].GetUInt32();
@@ -170,9 +170,7 @@ void LootStore::LoadLootTable()
             tab->second->AddEntry(storeitem);
             ++count;
         }
-        while (result->NextRow());
-
-        delete result;
+        while (queryResult->NextRow());
 
         Verify();                                           // Checks validity of the loot store
 
@@ -1327,7 +1325,7 @@ void Loot::Release(Player* player)
                 {
                     if (!IsLootedForAll())
                     {
-                        updateClients = true;
+                        go->SetChestDespawn(); // chests despawn after 5 min even if nothing looted
                         break;
                     }
 
@@ -3228,7 +3226,7 @@ void LootMgr::CheckDropStats(ChatHandler& chat, uint32 amountOfCheck, uint32 loo
     if (amountOfCheck < 1)
         amountOfCheck = 1;
 
-    std::unique_ptr<Loot> loot = std::unique_ptr<Loot>(new Loot(LOOT_DEBUG));
+    std::unique_ptr<Loot> loot = std::make_unique<Loot>(LOOT_DEBUG);
 
     // get loot table for provided loot id
     LootTemplate const* lootTable = store->GetLootFor(lootId);

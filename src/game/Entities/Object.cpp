@@ -1471,10 +1471,11 @@ float WorldObject::GetDistance(float x, float y, float z, DistanceCalculation di
     }
 }
 
-float WorldObject::GetDistance2d(float x, float y, DistanceCalculation distcalc) const
+float WorldObject::GetDistance2d(float x, float y, DistanceCalculation distcalc, bool transport) const
 {
-    float dx = GetPositionX() - x;
-    float dy = GetPositionY() - y;
+    Position const& pos = GetPosition(transport ? GetTransport() : nullptr);
+    float dx = pos.x - x;
+    float dy = pos.y - y;
     float dist = dx * dx + dy * dy;
 
     switch (distcalc)
@@ -2139,15 +2140,19 @@ void WorldObject::AddToWorld()
 
 void WorldObject::RemoveFromWorld()
 {
-    if (m_isOnEventNotified)
-        m_currMap->RemoveFromOnEventNotified(this);
     if (!IsPlayer()) // players have their own logic due to cross map transports
         if (GenericTransport* transport = GetTransport())
             transport->RemovePassenger(this);
 
-    if (!m_stringIds.empty())
-        for (uint32 stringId : m_stringIds)
-            m_currMap->RemoveStringIdObject(stringId, this);
+    if (IsInWorld())
+    {
+        if (m_isOnEventNotified)
+            m_currMap->RemoveFromOnEventNotified(this);
+
+        if (!m_stringIds.empty())
+            for (uint32 stringId : m_stringIds)
+                m_currMap->RemoveStringIdObject(stringId, this);
+    }
 
     Object::RemoveFromWorld();
 }
@@ -2265,8 +2270,8 @@ Creature* WorldObject::SummonCreature(TempSpawnSettings settings, Map* map, uint
                 creature->SetPower(POWER_MANA, templateData->curMana);
             if (templateData->modelId > 0)
                 creature->SetDisplayId(templateData->modelId);
-            if (templateData->equipmentId)
-                creature->LoadEquipment(templateData->equipmentId == -1 ? 0 : templateData->equipmentId, true);
+            if (templateData->equipmentId != -1)
+                creature->LoadEquipment(templateData->equipmentId, true);
             if (templateData->curHealth > 1)
                 creature->SetHealth(templateData->curHealth);
             if (templateData->curMana > 0)

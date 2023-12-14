@@ -181,6 +181,7 @@ class SpellCastTargets
         Corpse* getCorpseTarget() const { return m_CorpseTarget; }
 
         void setItemTarget(Item* item);
+        void clearItemPointer();
         ObjectGuid getItemTargetGuid() const { return m_itemTargetGUID; }
         Item* getItemTarget() const { return m_itemTarget; }
         uint32 getItemTargetEntry() const { return m_itemTargetEntry; }
@@ -569,7 +570,7 @@ class Spell
 
         int32 CalculateSpellEffectValue(SpellEffectIndex i, Unit* target, bool maximum = false, bool finalUse = true)
         { return m_trueCaster->CalculateSpellEffectValue(target, m_spellInfo, i, &m_currentBasePoints[i], maximum, finalUse); }
-        int32 CalculateSpellEffectDamage(Unit* unitTarget, int32 damage);
+        int32 CalculateSpellEffectDamage(Unit* unitTarget, int32 damage, float damageDoneMod);
         static uint32 CalculatePowerCost(SpellEntry const* spellInfo, Unit* caster, Spell* spell = nullptr, Item* castItem = nullptr, bool finalUse = false);
 
         bool HaveTargetsForEffect(SpellEffectIndex effect) const;
@@ -577,8 +578,6 @@ class Spell
         void DelayedChannel();
         uint32 getState() const { return m_spellState; }
         void setState(uint32 state) { m_spellState = state; }
-
-        uint32 GetUsableHealthStoneItemType(Unit* unitTarget);
 
         struct CreaturePosition
         {
@@ -600,7 +599,7 @@ class Spell
         bool DoSummonCritter(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level);
         bool DoSummonGuardian(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level);
         bool DoSummonPossessed(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level);
-        bool DoSummonVehicle(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level);
+        bool DoSummonVehicle(CreatureSummonPositions& list, SummonPropertiesEntry const* prop, SpellEffectIndex effIdx, uint32 level, uint32 seatNum, uint32 rideSpell);
 
         void ProcessDispelList(std::list <std::pair<SpellAuraHolder*, uint32> >& dispelList, std::list<std::pair<SpellAuraHolder*, uint32> >& successList, std::list <uint32>& failList);
         void EvaluateResultLists(std::list<std::pair<SpellAuraHolder*, uint32> >& successList, std::list <uint32>& failList);
@@ -858,6 +857,9 @@ class Spell
         uint32 GetDamage() { return damage; }
         void SetDamage(uint32 newDamage) { damage = newDamage; }
         SpellSchoolMask GetSchoolMask() { return m_spellSchoolMask; }
+        void SetGuaranteedCrit() { m_guaranteedCrit = true; }
+        // OnInit use only
+        void SetEffectSkipMask(uint32 mask) { m_effectSkipMask = mask; }
         // OnHit use only
         uint32 GetTotalTargetDamage() { return m_damage; }
         uint32 GetTotalTargetAbsorb() { return m_absorb; }
@@ -889,13 +891,14 @@ class Spell
         WorldObject* GetTrueCaster() const { return m_trueCaster; }
         Unit* GetAffectiveCasterOrOwner() const;
 
-        //Custom Spell Cast Results
+        // custom Spell Cast Results
         void SetParam1(uint32 param1) { m_param1 = param1; }
         void SetParam2(uint32 param2) { m_param2 = param2; }
 
         // overrides
         void SetOverridenSpeed(float newSpeed);
         void SetIgnoreRoot(bool state) { m_ignoreRoot = state; }
+        void SetDamageDoneModifier(float mod, SpellEffectIndex effIdx);
         void SetIgnoreOwnerLevel(bool state) { m_ignoreOwnerLevel = state; }
     protected:
         void SendLoot(ObjectGuid guid, LootType loottype, LockType lockType);
@@ -951,6 +954,7 @@ class Spell
         bool m_needSpellLog;                                // need to send spell log?
         uint8 m_applyMultiplierMask;                        // by effect: damage multiplier needed?
         float m_damageMultipliers[3];                       // by effect: damage multiplier
+        float m_damageDoneMultiplier[3];
 
         // Current targets, to be used in SpellEffects (MUST BE USED ONLY IN SPELL EFFECTS)
         Unit* unitTarget;
@@ -971,6 +975,7 @@ class Spell
         int32 m_healing;                                    // Healing in effects count here
         int32 m_healingPerEffect[MAX_EFFECT_INDEX];
         int32 m_healthLeech;                                // Health leech in effects for all targets count here
+        bool m_guaranteedCrit;                              // Used in effect handlers to guarantee crit
 
         //******************************************
         // Spell trigger system
@@ -1047,6 +1052,7 @@ class Spell
         SpellScript* m_spellScript;
         AuraScript* m_auraScript; // needed for some checks for value calculation
         int32 m_effectTriggerChance[MAX_EFFECT_INDEX]; // used by effects to roll if they should go off
+        uint32 m_effectSkipMask;
 
         uint32 m_spellState;
         uint32 m_timer;
