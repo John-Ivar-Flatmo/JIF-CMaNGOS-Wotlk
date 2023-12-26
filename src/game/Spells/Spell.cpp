@@ -50,6 +50,10 @@
 #include "Entities/ObjectGuid.h"
 #include "Entities/Transports.h"
 
+#ifdef BUILD_ELUNA
+#include "LuaEngine/LuaEngine.h"
+#endif
+
 extern pEffect SpellEffects[MAX_SPELL_EFFECTS];
 
 class PrioritizeManaUnitWraper
@@ -3327,7 +3331,7 @@ SpellCastResult Spell::SpellStart(SpellCastTargets const* targets, Aura* trigger
     m_spellEvent = new SpellEvent(this);
     m_trueCaster->m_events.AddEvent(m_spellEvent, m_trueCaster->m_events.CalculateTime(1));
 
-    if (!m_trueCaster->IsGameObject()) // gameobjects dont have a sense of already casting a spell
+    if (m_trueCaster->IsUnit()) // gameobjects dont have a sense of already casting a spell
     {
         // Prevent casting at cast another spell (ServerSide check)
         if (m_caster->IsNonMeleeSpellCasted(false, true, true) && m_cast_count && !m_ignoreConcurrentCasts)
@@ -3715,6 +3719,15 @@ SpellCastResult Spell::cast(bool skipCheck)
     // traded items have trade slot instead of guid in m_itemTargetGUID
     // set to real guid to be sent later to the client
     m_targets.updateTradeSlotItem();
+
+#ifdef BUILD_ELUNA
+    // used by eluna
+    if (m_caster)
+    {
+        if (m_caster->GetTypeId() == TYPEID_PLAYER)
+            sEluna->OnSpellCast(m_caster->ToPlayer(), this, skipCheck);
+    }
+#endif
 
     m_duration = CalculateSpellDuration(m_spellInfo, m_caster, nullptr, m_auraScript);
     if (m_trueCaster->IsPlayer())
